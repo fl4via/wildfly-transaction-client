@@ -20,9 +20,12 @@ package org.wildfly.transaction.client._private;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.security.Permission;
 import java.util.ServiceConfigurationError;
 
+import javax.print.URIException;
 import javax.transaction.HeuristicCommitException;
 import javax.transaction.HeuristicMixedException;
 import javax.transaction.HeuristicRollbackException;
@@ -58,6 +61,13 @@ public interface Log extends BasicLogger {
     @Message(value = "Subordinate XAResource at %s")
     String subordinateXaResource(URI location);
 
+    // Warn
+
+    @LogMessage(level = Logger.Level.WARN)
+    @Message(value = "Unexpected exception on XA recovery")
+    void unexpectedExceptionOnXAResourceRecovery(@Cause SystemException e);
+
+
     // Debug
 
     @LogMessage(level = Logger.Level.DEBUG)
@@ -67,6 +77,17 @@ public interface Log extends BasicLogger {
     @LogMessage(level = Logger.Level.DEBUG)
     @Message(value = "Closing the recovery stream after recovery failed threw an exception")
     void recoverySuppressedException(@Cause XAException e);
+
+    // TODO review: I added here all messages that were useful for me when debugging
+    // let me know if that is too much, or if even if I should delete all of them
+    // ... and should these two be DEBUG, or also TRACE level like the others?
+    @LogMessage(level = Logger.Level.DEBUG)
+    @Message (value = "Created xa resource recovery file: %s")
+    void xaResourceRecoveryFileCreated(Path path);
+
+    @LogMessage(level = Logger.Level.TRACE)
+    @Message (value = "Deleted xa resource recovery file: %s")
+    void xaResourceRecoveryFileDeleted(Path path);
 
     // Trace
 
@@ -81,6 +102,18 @@ public interface Log extends BasicLogger {
     @LogMessage(level = Logger.Level.TRACE)
     @Message(value = "Failure on running doRecover during initialization")
     void doRecoverFailureOnIntialization(@Cause Throwable e);
+
+    @LogMessage(level = Logger.Level.TRACE)
+    @Message(value = "Added resource (%s) to xa resource recovery registry %s")
+    void xaResourceAddedToRecoveryRegistry(URI uri, Path filePath);
+
+    @LogMessage(level = Logger.Level.TRACE)
+    @Message(value = "Removed resource (%s) from xa resource recovery registry %s")
+    void xaResourceRemovedFromRecoveryRegistry(URI uri, Path filePath);
+
+    @LogMessage(level = Logger.Level.TRACE)
+    @Message(value = "Recovered in doubt xa resource (%s) from xa resource recovery registry %s")
+    void xaResourceRecoveredFromRecoveryRegistry(URI uri, Path filePath);
 
     // Regular messages
 
@@ -357,4 +390,19 @@ public interface Log extends BasicLogger {
 
     @Message(id = 90, value = "Cannot assign location \"%s\" to transaction because it is already located at \"%s\"")
     IllegalStateException locationAlreadyInitialized(URI newLocation, URI oldLocation);
+
+    @Message(id = 91, value = "Failed to create xa resource recovery file: %s")
+    SystemException createXAResourceRecoveryFileFailed(Path filePath, @Cause IOException e);
+
+    @Message(id = 92, value = "Failed to append xa resource (%s) to xa recovery file: %s")
+    SystemException appendXAResourceRecoveryFileFailed(URI uri, Path filePath, @Cause IOException e);
+
+    @Message(id = 93, value = "Failed to delete xa recovery registry file %s on removal of %s")
+    XAException deleteXAResourceRecoveryFileFailed(@Field int errorCode, Path filePath, XAResource resource, @Cause IOException e);
+
+    @Message(id = 94, value = "Failed to read xa resource recovery file %s")
+    SystemException readXAResourceRecoveryFileFailed(Path filePath, @Cause IOException e);
+
+    @Message(id = 95, value = "Failed to read URI '%s' from xa resource recovery file %s")
+    SystemException readURIFromXAResourceRecoveryFileFailed(String uriString, Path filePath, @Cause URISyntaxException e);
 }

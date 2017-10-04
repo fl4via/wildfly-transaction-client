@@ -40,14 +40,16 @@ import com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionImple;
 import com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionManagerImple;
 import org.jboss.tm.ExtendedJBossXATerminator;
 import org.jboss.tm.TransactionTimeoutConfiguration;
+import org.jboss.tm.XAResourceRecoveryRegistry;
 import org.wildfly.common.annotation.NotNull;
 import org.wildfly.transaction.client.SimpleXid;
 import org.wildfly.transaction.client._private.Log;
 
 final class JBossJTALocalTransactionProvider extends JBossLocalTransactionProvider {
 
-    JBossJTALocalTransactionProvider(final int staleTransactionTime, final ExtendedJBossXATerminator ext, final TransactionManager tm) {
-        super(ext, staleTransactionTime, tm);
+    JBossJTALocalTransactionProvider(final int staleTransactionTime, final ExtendedJBossXATerminator ext, final TransactionManager tm,
+                                     final XAResourceRecoveryRegistry reg) {
+        super(ext, staleTransactionTime, tm, reg);
     }
 
     int getTransactionManagerTimeout() throws SystemException {

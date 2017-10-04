@@ -18,10 +18,7 @@
 
 package org.wildfly.transaction.client;
 
-import java.net.URI;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import org.wildfly.transaction.client._private.Log;
 
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
@@ -29,18 +26,22 @@ import javax.transaction.Synchronization;
 import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
-
-import org.wildfly.transaction.client._private.Log;
+import java.net.URI;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 final class XAOutflowedResources {
 
     private final LocalTransaction transaction;
+    private final XARecoveryRegistry recoveryRegistry;
     private final ConcurrentMap<Key, SubordinateXAResource> enlistments = new ConcurrentHashMap<>();
 
     // protected by {@code this}
     private int enlistedSubordinates = 0;
 
-    XAOutflowedResources(final LocalTransaction transaction) {
+    XAOutflowedResources(final LocalTransaction transaction) throws SystemException {
+        recoveryRegistry = new XARecoveryRegistry(transaction.getXid());
         this.transaction = transaction;
     }
 
@@ -55,7 +56,7 @@ final class XAOutflowedResources {
             if (xaResource != null) {
                 return xaResource;
             }
-            xaResource = new SubordinateXAResource(location, parentName);
+            xaResource = new SubordinateXAResource(location, parentName, recoveryRegistry);
             if (! transaction.enlistResource(xaResource)) {
                 throw Log.log.couldNotEnlist();
             }
@@ -63,6 +64,7 @@ final class XAOutflowedResources {
             final SubordinateXAResource finalXaResource = xaResource;
             int status = transaction.getStatus();
             if (status == Status.STATUS_ACTIVE || status == Status.STATUS_MARKED_ROLLBACK) try {
+                System.out.println(">>>REGISTERING SYNCHRONIZATION");
                 transaction.registerSynchronization(new Synchronization() {
                     public void beforeCompletion() {
                         try {
